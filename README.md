@@ -4,8 +4,10 @@ A construction operations platform I designed, built and deployed for a construc
 
 ![MAYAK case study](assets/diagrams/cover.svg)
 
-**My role:** product design, full-stack development and operations.  
-**Stack:** Next.js 16, React 19, TypeScript, PostgreSQL, self-hosted Supabase, Docker and Nginx.  
+**My role:** product design, full-stack development and operations.
+
+**Stack:** Next.js 16, React 19, TypeScript, PostgreSQL, self-hosted Supabase, Docker and Nginx.
+
 **Delivery:** a running product, ongoing changes, a server migration and tested offsite recovery.
 
 [Read the PDF](downloads/MAYAK-Case-Study.pdf) · [Watch the walkthrough — 2:42](assets/walkthrough/MAYAK-Walkthrough.mp4) · [Read the transcript](assets/walkthrough/transcript.md)

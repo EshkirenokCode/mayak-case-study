@@ -1,10 +1,10 @@
-# Verification and known limits
+# Checks and unfinished work
 
 [Back to the case study](../README.md)
 
 ## Focused tests
 
-For this publication, I ran the current source repository's focused Node tests for connection codes, request working-list behaviour and the activity report. All 12 tests passed.
+I reran the source repository's Node tests for connection codes, request-list behaviour and the activity report before publishing this case. All 12 passed.
 
 | Area | Assertions covered |
 |---|---|
@@ -36,4 +36,4 @@ The video has no narration. Its English captions are provided both in the pictur
 - **Backup consistency:** the database and live files are captured separately. A restore test does not remove the need for a controlled cutover during migration.
 - **Business impact:** I have not measured an attributable ROI or a percentage improvement in administrative time.
 
-These limits are part of the engineering account. The delivered product and its operating history are stronger evidence than a fabricated impact figure.
+The next testing improvement I'd prioritise is a browser-level regression for the normal request route, including a failed finance selection and the two completion states.

@@ -1,8 +1,8 @@
-# Deployment, migration and recovery
+# Running and moving MAYAK
 
 [Back to the case study](../README.md)
 
-I operate the application as well as developing it. That includes a migration from the original server to a VPS and recovery checks performed against copied data.
+I look after the server as well as the application. Moving MAYAK to a VPS made several of the less visible dependencies very obvious.
 
 ## Deployment
 
@@ -39,13 +39,13 @@ A snapshot starts with a temporary tag. It is promoted to the successful tag onl
 
 The job is protected against overlapping runs, resource usage is limited, and logs are rotated. The encryption password and recovery configuration also have a separate off-server copy; a password stored only inside its own encrypted repository cannot help recover that repository.
 
-## What I verified
+## The restore check
 
 I restored the offsite snapshot into a separate target directory and restored its database into a separate test database. The checks included database records, file contents, extended attributes and proxy SQLite integrity. The database restore ran with error-stop behaviour rather than ignoring SQL failures.
 
-The task was a restore rehearsal, not a full bare-metal disaster exercise. Roles were not replayed into the live cluster for testing: roles are cluster-wide and doing so would change production.
+I used a separate directory and test database for the rehearsal. I didn't replay the roles dump into the live cluster: roles are cluster-wide, so that would have changed production. I haven't tested a full bare-metal recovery.
 
-## Remaining operational limits
+## Things to keep watching
 
 - One VPS remains a single failure domain. Offsite recovery is not automatic high availability.
 - The live file capture and transactional database dump are not a single atomic cross-system snapshot.

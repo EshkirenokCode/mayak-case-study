@@ -1,4 +1,4 @@
-# Architecture and request paths
+# Architecture
 
 [Back to the case study](../README.md)
 
@@ -23,15 +23,15 @@ flowchart TD
     BK --> C[Encrypted offsite repository]
 ```
 
-The application and self-hosted services run in Docker on a VPS. The reverse proxy terminates HTTPS. The system is deliberately not split into a fleet of independently deployed application services.
+The application and Supabase services run in Docker on one VPS. Nginx handles HTTPS. There is one application to deploy.
 
 Next.js server actions handle the product's forms and workflow operations. The application uses Supabase's HTTP interfaces rather than a separate direct PostgreSQL connection for ordinary user operations. PostgreSQL functions handle operations that need a database-level atomic boundary.
 
-## Why this shape
+## Why I used this stack
 
-Self-hosted Supabase provides sessions, a data API, file storage and PostgreSQL without requiring me to implement each service from scratch. Next.js keeps page rendering and form actions in the same application. Shared TypeScript types help keep interface and domain logic aligned.
+I used self-hosted Supabase for sessions, the data API, PostgreSQL and files. Those were useful pieces to reuse. Next.js was a straightforward fit for pages and form actions, with TypeScript types shared inside the application.
 
-The cost is operational responsibility. I have to manage service configuration, storage, credentials, migrations, backups and recovery. A single VPS is simpler to operate, but it is also a failure domain; this architecture does not provide automatic failover.
+The trade-off is that I operate the stack myself: configuration, credentials, migrations, file storage and backups. One VPS keeps that manageable. It also means there is no automatic failover.
 
 ## A normal mutation
 
@@ -62,4 +62,4 @@ The service worker has an offline fallback page. It does not cache a private wor
 
 Forms primarily use server actions. HTTP routes handle file responses, exports, scheduled deadline processing and the MAX webhook. An export must authorize the operation itself; protecting only the surrounding admin page would not protect a separately requested download.
 
-I have not published a speculative REST API for the whole application. The case study describes the actual interface boundaries rather than implying an external integration contract that the product does not offer.
+There is no separate public REST API covering the whole product. Most of the interface calls server actions; the HTTP routes exist for the places that need them.

@@ -1,8 +1,8 @@
-# Access: rank, duties and data scope
+# Access rules
 
 [Back to the case study](../README.md)
 
-The access model answers three different questions. Combining them into a single “admin” flag would grant too much authority to people who only need to perform a department's work.
+I split access into rank, duties and data scope. Procurement is a good example of why: someone needs to handle supplier invoices without gaining authority over the site team.
 
 ## 1. Rank: managerial authority
 
@@ -49,6 +49,6 @@ The site issues a random connection code. The database stores a hash, not the pu
 
 This identifies the account to notify; it does not grant the MAX user new application permissions. The message links back to MAYAK, where the normal session and access rules apply.
 
-## What this does not claim
+## Security review
 
-This is a description of implemented boundaries, not a completed penetration-test report. It does not claim that every server operation is covered only by RLS, that every interaction is audited, or that a notification proves a person has read the request.
+I haven't commissioned a penetration test. The boundaries described here are the ones implemented in the code. Some server operations use explicit privileged checks, activity logging covers recorded events, and a sent notification is not a read receipt.

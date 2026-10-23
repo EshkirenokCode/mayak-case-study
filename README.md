@@ -1,125 +1,87 @@
 # MAYAK
 
-A construction operations platform I designed, built and deployed for a construction company.
+I built MAYAK for a construction company and still maintain it. It's where the team keeps project tasks, site photos, timesheets, material records and purchase requests. I handled the interface, application, database rules and deployment, then moved it from the original server to a VPS.
 
-![MAYAK case study](assets/diagrams/cover.svg)
+The stack is Next.js, React, TypeScript and self-hosted Supabase, running in Docker behind Nginx.
 
-**My role:** product design, full-stack development and operations.
+[PDF](downloads/MAYAK-Case-Study.pdf) · [Walkthrough, 2:42](assets/walkthrough/MAYAK-Walkthrough.mp4) · [Transcript](assets/walkthrough/transcript.md)
 
-**Stack:** Next.js 16, React 19, TypeScript, PostgreSQL, self-hosted Supabase, Docker and Nginx.
+## What I was trying to solve
 
-**Delivery:** a running product, ongoing changes, a server migration and tested offsite recovery.
+A request starts on a construction site, but several people in the office may need to do something with it. The site manager knows what's needed. Procurement finds supplier options. Finance decides which invoices to use. Someone else puts those invoices in the payment register.
 
-[Read the PDF](downloads/MAYAK-Case-Study.pdf) · [Watch the walkthrough — 2:42](assets/walkthrough/MAYAK-Walkthrough.mp4) · [Read the transcript](assets/walkthrough/transcript.md)
+The useful thing to preserve through all of that is fairly simple: what was requested, what changed, who made the decision, and whose turn it is now.
 
-## The problem
+That became the basis of the procurement workflow. The rest of MAYAK uses the construction project as its common context: tasks, reports, hours, stock movements, documents and contracts belong to a project people have access to. Those modules share context, but they don't automatically update one another. Approving an invoice, for example, doesn't record a material receipt.
 
-A construction project produces several kinds of information at once: work assignments, site photographs, attendance, material movements, invoices and contracts. The difficulty is keeping the project, the responsible person and the next action clear as work passes between the site and the office.
+## A request from start to finish
 
-I built MAYAK to put those records in one system. A site manager needs to report from a phone. Procurement needs to compare supplier documents. Finance needs to choose what can move forward. Management needs to see unresolved work without asking each person for an update.
+Take a request for plywood and concrete accessories. The site manager adds them as separate items, sets a required date and priority, and sends the request to an approver. Once approved, it goes to procurement.
 
-The implementation had to fit an operating company. I made changes incrementally, kept the product self-hosted, and took responsibility for deployment and recovery as well as the interface.
+Procurement adds supplier invoices under the relevant item. A group can have a title, a comment and several files. Finance then chooses individual files within those groups. Each requested item needs at least one selected invoice; the alternatives stay in the history.
 
-## What I built
+![Request route and the two follow-up responsibilities](assets/diagrams/workflow.svg)
 
-| Area | What the product handles |
-|---|---|
-| Projects | Project records, assigned teams, status, gallery and a project-level overview. |
-| Tasks | Multiple assignees, subtasks, checklists, comments, issues, start dates, deadlines, a Gantt view and acceptance. |
-| Site records | Photo reports, direct gallery uploads, worker and staff timesheets, and optional location evidence. |
-| Materials | Orders, receipts, write-offs and transfers, with balances calculated from movement history. |
-| Procurement | Multi-item requests, supplier invoice groups, file-level finance decisions, corrections and registration. |
-| Commercial records | Documents, folders, contracts, acts and payment records. |
-| Administration | Company activation, team management, module controls and a restricted activity report with export. |
-| Notifications | Browser push and MAX messages for people whose action is required. |
+The part that needed care was what happened after finance. Procurement still had an order to finish, while the dispatcher had invoices to register. Giving the whole request one more “done” flag would hide one person's unfinished work when the other finished.
 
-These modules share project context and access rules. They are not all one automatic transaction: approving an invoice does not, for example, record a material receipt.
+I kept one request and gave registration its own linked entry and per-file marks. Procurement can close its work independently. The register stays visible, including entries already registered.
 
-## One complete workflow
+There are exceptions to the normal route. Procurement can finish a request without finance when that's the actual outcome. A direct invoice goes straight to finance and dispatch. Returns and recalls have their own permission checks and permitted destinations.
 
-A site manager requests plywood and concrete accessories. I use this example because it crosses several people, a collection of files, database rules and two different definitions of completion.
+[Workflow details and data model](docs/workflow.md)
 
-![Purchase request workflow](assets/diagrams/workflow.svg)
+## The implementation choices
 
-1. **Create and approve.** The request contains separate material items, a required date, priority and an approver. Approval puts it in procurement's queue.
-2. **Collect alternatives.** Procurement attaches invoice files to each item. Groups retain their title and comment; each item needs an invoice before the request goes to finance.
-3. **Choose actual files.** Finance selects files within the groups. A selection must cover every material item. Unselected alternatives remain in history.
-4. **Commit the decision.** A database routine checks the finance duty, active company, request stage and file ownership. It locks the request row and writes the decisions, next status, registry entry and event in one transaction.
-5. **Finish the two responsibilities.** Procurement completes its order work. Independently, the dispatcher marks selected invoices as registered. The registry record stays visible after registration, with a completed state.
+**Finance approval is a database operation.** It updates file decisions, the request status, the register and the event history together. The SQL routine locks the request, checks the actor and company, rejects files from another request, and requires a selection for every material item. A failed check leaves the approval uncommitted.
 
-The request is not duplicated for the dispatcher. Its linked registry entry and per-file registration marks describe a separate responsibility. Closing procurement work must not make an unfinished registration disappear.
+**Other handoffs check the current state again.** Someone can leave a page open while a colleague moves the request forward. The update includes the expected status, so that old page can't overwrite the new stage. The event write for these ordinary actions is separate; their guarantee is different from the finance transaction.
 
-There are also shorter and corrective routes: direct invoices go to finance and dispatch, procurement can finish a request without a finance stage, and permitted actors can return or recall a handoff. I modelled these explicitly instead of forcing every case through the normal route.
+**Rank and duties answer different questions.** A procurement employee shouldn't gain management permissions just to handle invoices. I kept managerial rank separate from the supply, finance and dispatcher duties. Those duties can be combined on one profile.
 
-[Detailed workflow and data model](docs/workflow.md)
+**Task completion has a review step.** An assignee submits work, then the task author accepts it or returns it. The normal status selector can't skip acceptance. There's a fallback for management if the original author has been deleted.
 
-## Decisions that shaped the implementation
+## How it's put together
 
-### Responsibility is not a higher rank
+![Application and infrastructure](assets/diagrams/architecture.svg)
 
-I separated managerial rank from operational duties. A person can handle procurement, finance or dispatch without gaining the authority of a site manager. Duties can be combined. Company and project visibility still constrain which records the person can access.
+Next.js server actions use the user's session to call Supabase through its HTTP gateway. Auth manages sessions, PostgREST handles data requests, and Storage holds uploaded files. PostgreSQL row-level security constrains ordinary queries by company and project access.
 
-### “Submitted” is not “accepted”
+Some operations need elevated access. I keep those server paths separate and check their actor and scope explicitly. The platform activity export, for instance, checks the platform administrator in the export path itself, rather than relying on the page around it being protected.
 
-A task assignee submits work for review. The task author accepts it or returns it for revision. The normal status selector cannot bypass these transitions. If the author is deleted, management can resolve a review that would otherwise be stranded.
+Invoice downloads start with an authenticated file lookup. The server fetches the file through a short-lived storage URL and streams it with the original filename and private/no-store headers. This also gave me one place to fix the browser behaviour and the confusing download names users had reported.
 
-### Put the finance decision in the database
+[Architecture](docs/architecture.md) · [Access rules](docs/access.md)
 
-The finance approval changes several related records. Keeping that operation in one SQL routine prevents a request from appearing approved while its registry entry or selected-file flags are missing. The routine validates its own actor and company even though it runs with elevated database privileges.
+## Small details that mattered in use
 
-### Handle stale pages deliberately
+On phones, photos are resized before upload. Small JPEGs are left alone, and a failed conversion falls back to the original. The PWA has an offline fallback page; offline editing and synchronization aren't implemented.
 
-Ordinary request transitions recheck the current stage and qualify the update with that stage. If another person has already moved the request, the action returns an error rather than overwriting the new state. These ordinary actions and the atomic finance routine are different mechanisms; I do not describe every event write as transactional.
+MAX pairing uses a random one-time code, stored as a hash. Messages bring the next responsible person back to the request. Sending is best-effort, so the application's work queue remains important even when a notification fails.
 
-### Keep delivery outside the business decision
+One regression was especially mundane: approved direct invoices stayed in the ordinary working list, waiting for a procurement step they didn't have. I fixed the list rule and added tests for both direct invoices and normal requests. These small distinctions tend to be where the real operating rules show up.
 
-Push and MAX are best-effort notifications. A failed message does not become the source of truth for whether finance approved a request. The request state and the person's working queue remain in MAYAK. There is currently no durable notification outbox.
+## Deployment and recovery
 
-## Architecture and access
+I also moved the running system to a VPS. The migration included database roles and grants, uploaded files, file attributes, environment configuration and HTTPS. Restoring the database alone wasn't enough: the records could load while photographs and invoice downloads still failed.
 
-![System architecture](assets/diagrams/architecture.svg)
+The current backup job keeps encrypted, versioned snapshots locally and offsite. I tested a cloud restore into a separate directory and database, including the file attributes and proxy configuration. The password and recovery configuration have a separate off-server copy.
 
-The browser reaches Next.js through Nginx over HTTPS. Server actions use the user's session to call the self-hosted Supabase gateway. Auth manages sessions, PostgREST exposes PostgreSQL, and Storage handles uploaded files.
+[Migration and recovery notes](docs/operations.md)
 
-On ordinary user-scoped paths, PostgreSQL row-level security enforces company and project visibility. The interface hides unavailable actions and server checks provide useful errors, but neither replaces the database boundary. A small set of administrative and workflow operations uses privileged access; those paths have explicit checks and are separate from normal user queries.
+## Where it stands
 
-Invoice downloads also start with an authenticated, permitted file lookup. The server uses a short-lived storage URL to fetch the file, then streams it with its original filename and private, non-cacheable response headers. It does not publish a permanent public URL for the invoice.
+For this case study, I reran 12 focused tests for MAX connection codes, direct-invoice list behaviour and activity-report filtering/export. All passed. There are also SQL regression scripts and a backup integration test, but this isn't a complete browser end-to-end suite.
 
-[Architecture](docs/architecture.md) · [Access model](docs/access.md)
+There are still things I'd improve. The service runs on one VPS. Notifications have no durable outbox. Material balances are calculated from movement history, without published large-scale performance measurements. Live files and the database aren't captured as one atomic snapshot.
 
-## Field conditions and operations
+I haven't measured an attributable ROI or a percentage reduction in administrative time. What I can show is the deployed application, the rules it implements, the fixes made from user feedback, and a recovery procedure I've actually exercised.
 
-I treated phone use as part of the implementation. Images are resized before upload to reduce bandwidth. Small JPEGs are kept as they are; a failed conversion falls back to the original file. The PWA provides an offline fallback page, not offline editing or queued synchronization.
+[Verification and limits](docs/verification.md)
 
-I also moved the application from its original server to a VPS. That work included database roles and permissions, file storage, extended file attributes, environment configuration, HTTPS and the final data handoff. Files were part of the migration, not an afterthought to restoring the database.
+---
 
-Backups now include an encrypted, versioned offsite copy. I tested recovery into a separate directory and test database, including file attributes and proxy configuration. The password and recovery configuration are stored separately from the encrypted repository.
+The walkthrough is an English reconstruction with invented sample data, not a production screen recording. This repository contains the case study and media; application source, staff records, invoices and server credentials are excluded.
 
-[Deployment, migration and recovery](docs/operations.md)
+[English captions: SRT](assets/walkthrough/captions.srt) · [WebVTT](assets/walkthrough/captions.vtt) · [Ilya on GitHub](https://github.com/EshkirenokCode)
 
-## Validation and limits
-
-I have focused tests for MAX connection codes, the direct-invoice working-list regression and activity-report filtering/export. The latest check for this case study ran **12 focused tests, all passing**. There are also database regression scripts and a versioned-backup integration test. I do not present this as full end-to-end coverage.
-
-The product runs on one VPS. That is a practical deployment for its current use, not a high-availability design. Notification delivery is not guaranteed. Live database and file backups are not a single cross-system snapshot. Material balances are calculated from history; I have not published large-scale performance measurements.
-
-[Verification and known limits](docs/verification.md)
-
-## Result and my contribution
-
-MAYAK is a deployed system used for construction operations. The delivered scope includes the application, project-based access, procurement workflow, messaging integration, exports, deployment, migration and recovery procedures.
-
-My work covered requirements, interface design, React and TypeScript implementation, SQL routines and policies, integrations, deployment and production fixes. User feedback led to changes such as per-file invoice selection, a separate registry lifecycle, clearer mobile controls and original filenames on downloads.
-
-I have not measured a defensible percentage reduction in administrative time or an ROI figure. The evidence in this case is the implemented workflow, the technical decisions, the test scope and a verified recovery procedure.
-
-## Materials
-
-- [PDF case study](downloads/MAYAK-Case-Study.pdf)
-- [English walkthrough](assets/walkthrough/MAYAK-Walkthrough.mp4), with quiet music and embedded captions
-- [Transcript](assets/walkthrough/transcript.md), [SRT](assets/walkthrough/captions.srt) and [WebVTT](assets/walkthrough/captions.vtt)
-- [Workflow](docs/workflow.md), [architecture](docs/architecture.md), [access](docs/access.md), [operations](docs/operations.md) and [verification](docs/verification.md)
-
-The walkthrough uses invented sample data and an English visual reconstruction. It is not a recording of the production interface. Application source code, staff records, invoices and infrastructure credentials are not included in this repository.
-
-Written and maintained by [Ilya](https://github.com/EshkirenokCode). Current implementation reviewed in October 2026.
+Updated October 2026.

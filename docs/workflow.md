@@ -1,4 +1,4 @@
-# Purchase requests: state, files and completion
+# Purchase requests
 
 [Back to the case study](../README.md)
 
@@ -16,7 +16,7 @@ stateDiagram-v2
     RegistryPending --> Registered: dispatcher marks selected files
 ```
 
-The two lines after finance approval represent different workstreams, not two duplicate requests. Request completion and registry completion are stored separately. The register keeps registered entries visible.
+After finance approval, procurement and dispatch each have work left. I keep their completion states separate and link both to the same request. Registered entries stay visible in the register.
 
 This diagram shows the successful route. Returns, recalls, cancellation and rejection are additional transitions with their own checks. “In work” is an optional marker within a department's current stage, not another mandatory stage in this diagram.
 
@@ -33,7 +33,7 @@ erDiagram
 
 A request holds its project, author, approver, priority, required date, kind and current status. An item represents one material requirement. An invoice group has a title and comment. Files within that group retain their original filenames and their own finance decisions and registration marks.
 
-That distinction is important. “Supplier A” may be a useful group title, but it should not replace the filename of a PDF. Finance may select only some files in the group, so a group-level flag is not enough to represent the decision.
+This came down to a small modelling detail: the group describes an offer, while the files are what finance selects. “Supplier A” is a useful title for the group. It is a poor filename for a downloaded PDF.
 
 Unselected invoice files stay in history. They are visually less prominent after the decision; they are not deleted to make the current view look tidy.
 
@@ -50,7 +50,7 @@ The application calls `approve_purchase_request_files(req, selected_ids)`. The r
 7. Creates or resets the linked registry entry to pending.
 8. Appends a request event identifying the actor and transition.
 
-These changes happen in the database routine's transaction. The application can then notify procurement and dispatch. Notification delivery is separate from committing the business decision.
+These writes share a transaction. Once it succeeds, the application can notify procurement and dispatch. A notification failure does not reverse the approval.
 
 ## Stale views and ordinary transitions
 
@@ -67,6 +67,6 @@ This conditional update prevents a stale action from moving a request from the w
 
 The direct-invoice list behaviour has a focused regression test because an earlier version left approved direct invoices in the ordinary work queue.
 
-## What counts as finished?
+## Completion
 
-There is no single “done” button for every participant. Procurement is finished when its request work is completed. Dispatch is finished when the selected files are registered. Retaining both states prevents one department's completion from hiding another department's outstanding work.
+I kept coming back to whose work the status describes. Procurement finishes the order; dispatch finishes registration. Keeping both states avoids losing an outstanding register task when someone closes the order.

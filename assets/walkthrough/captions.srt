@@ -1,0 +1,142 @@
+1
+00:00:00,000 --> 00:00:05,132
+Construction work crosses sites, office teams and
+documents. MAYAK gives those handoffs a shared record.
+
+2
+00:00:05,172 --> 00:00:09,960
+I built the product, its access model and the infrastructure that keeps it running.
+
+3
+00:00:10,000 --> 00:00:15,234
+Tasks, photos, timesheets, materials, contracts and purchase
+requests are organised around construction projects.
+
+4
+00:00:15,274 --> 00:00:20,960
+Materials use a movement history: receipts, write-offs
+and transfers explain the balance instead of replacing it.
+
+5
+00:00:21,000 --> 00:00:26,460
+A site manager requests plywood and accessories,
+with separate items, a required date and an approver.
+
+6
+00:00:26,500 --> 00:00:31,960
+Approval hands it to procurement. Each material
+item needs invoice files before finance can review it.
+
+7
+00:00:32,000 --> 00:00:36,732
+Procurement keeps supplier alternatives in named
+groups, with comments explaining the options.
+
+8
+00:00:36,772 --> 00:00:42,960
+Finance selects the actual files to use. Unselected
+alternatives remain visible in history rather than disappearing.
+
+9
+00:00:43,000 --> 00:00:47,733
+The SQL routine locks the request, then checks the actor, company and current stage.
+
+10
+00:00:47,773 --> 00:00:52,846
+It rejects foreign files and incomplete selections:
+every material item must have a chosen invoice.
+
+11
+00:00:52,886 --> 00:00:57,960
+File decisions, request status, the register entry
+and the event commit in one database transaction.
+
+12
+00:00:58,000 --> 00:01:03,283
+Procurement receives the approved request to finish
+the order. The dispatcher receives its chosen invoices.
+
+13
+00:01:03,323 --> 00:01:08,960
+Supply can close its work independently. The register
+entry remains visible and turns green when registered.
+
+14
+00:01:09,000 --> 00:01:14,778
+A previous actor can recall their handoff; revision
+can return work to an earlier permitted stage.
+
+15
+00:01:14,818 --> 00:01:20,960
+A direct-invoice route goes straight to finance and
+dispatch. It does not create a supply completion task.
+
+16
+00:01:21,000 --> 00:01:26,960
+Rank controls managerial authority. Supply, finance and
+dispatcher duties can be combined without raising rank.
+
+17
+00:01:27,000 --> 00:01:32,960
+Company and project rules constrain normal queries
+through RLS. Privileged routines perform their own checks.
+
+18
+00:01:33,000 --> 00:01:40,182
+In the task module, submitting work moves it to review.
+The task author accepts it or returns it for revision.
+
+19
+00:01:40,222 --> 00:01:45,960
+The status selector cannot bypass acceptance. If the
+author is deleted, management can resolve the review.
+
+20
+00:01:46,000 --> 00:01:51,293
+Next.js server actions use the user session to call
+self-hosted Supabase through its HTTP gateway.
+
+21
+00:01:51,333 --> 00:01:56,627
+Auth handles sessions; PostgreSQL enforces data rules;
+Storage keeps files. Explicit admin paths are separate.
+
+22
+00:01:56,667 --> 00:02:01,960
+For invoice downloads, the server checks file access
+before streaming from a 60-second signed URL.
+
+23
+00:02:02,000 --> 00:02:07,960
+On phones, photos are resized before upload. Smaller files
+reduce bandwidth without requiring a separate mobile app.
+
+24
+00:02:08,000 --> 00:02:14,313
+MAX pairing uses a one-time code stored as a hash.
+Notifications link the next person to the request.
+
+25
+00:02:14,353 --> 00:02:19,960
+Delivery is best-effort: a messaging failure must
+not become the source of truth for the workflow.
+
+26
+00:02:20,000 --> 00:02:25,116
+Docker and Nginx run the service. Encrypted offsite
+snapshots preserve the database, files and configuration.
+
+27
+00:02:25,156 --> 00:02:30,960
+I tested recovery in a separate directory and database,
+including the file attributes needed for correct downloads.
+
+28
+00:02:31,000 --> 00:02:36,460
+I translated operating rules into workflows, built the
+interface and backend, and implemented the access model.
+
+29
+00:02:36,500 --> 00:02:41,960
+I also handled deployment, server migration, backups
+and fixes driven by people using MAYAK at work.
